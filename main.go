@@ -2,16 +2,34 @@ package main
 
 import (
 	"context"
+	"fmt"
+	"io"
 	"log/slog"
+	"net"
 	"net/http"
 	"os"
+	"os/signal"
+	"sync"
 	"time"
 
 	"github.com/google/uuid"
 )
 
-func homePage(w http.ResponseWriter, r *http.Request) {
-	w.WriteHeader(202)
+type loggerCreator struct {
+	baseLogger *slog.Logger
+}
+
+func (lc *loggerCreator) RequestLoggerFromContext(ctx context.Context) *slog.Logger {
+	requestID := ctx.Value(requestIDKey).(string)
+	return lc.baseLogger.With(slog.String("request_id", requestID))
+}
+
+func homePage(lc *loggerCreator) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		logger := lc.RequestLoggerFromContext(r.Context())
+		logger.LogAttrs(r.Context(), slog.LevelInfo, "testing", slog.Any("method", r.Method))
+		w.WriteHeader(202)
+	}
 }
 
 type loggingResponseWriter struct {
@@ -24,62 +42,109 @@ func (w *loggingResponseWriter) WriteHeader(code int) {
 	w.ResponseWriter.WriteHeader(code)
 }
 
-func requestLoggerMiddleware(logger *slog.Logger, next http.HandlerFunc) http.HandlerFunc {
-	return func(w http.ResponseWriter, r *http.Request) {
-		requestID, err := uuid.NewRandom()
-		if err != nil {
-			w.WriteHeader(http.StatusInternalServerError)
-			w.Write([]byte("something went wrong"))
-			logger.LogAttrs(r.Context(), slog.LevelError, "error while generating UUID",
-				slog.Any("error", err),
+const requestIDKey = iota
+
+func generateRequestID() (string, error) {
+	requestID, err := uuid.NewRandom()
+	if err != nil {
+		return "", err
+	}
+
+	return requestID.String(), nil
+}
+
+func requestLoggerMiddleware(logger *slog.Logger) func(http.Handler) http.Handler {
+	return func(handler http.Handler) http.Handler {
+		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			requestID, err := generateRequestID()
+			if err != nil {
+				w.WriteHeader(http.StatusInternalServerError)
+				w.Write([]byte("something went wrong"))
+				logger.LogAttrs(r.Context(), slog.LevelError, "error while generating UUID",
+					slog.Any("error", err),
+				)
+				return
+			}
+
+			ctxWithReqID := context.WithValue(r.Context(), requestIDKey, requestID)
+			r = r.WithContext(ctxWithReqID)
+
+			logger := logger.With(
+				slog.String("requestId", requestID),
 			)
-			return
-		}
 
-		logger := logger.With(
-			slog.String("requestId", requestID.String()),
-		)
+			logger.LogAttrs(r.Context(), slog.LevelInfo, "incoming request",
+				slog.String("method", r.Method),
+				slog.String("url", r.URL.String()),
+				slog.String("address", r.RemoteAddr),
+			)
 
-		logger.LogAttrs(r.Context(), slog.LevelInfo, "incoming request",
-			slog.String("method", r.Method),
-			slog.String("url", r.URL.String()),
-			slog.String("address", r.RemoteAddr),
-		)
+			lrw := &loggingResponseWriter{ResponseWriter: w}
 
-		lrw := &loggingResponseWriter{ResponseWriter: w}
+			requestStartTime := time.Now()
 
-		requestStartTime := time.Now()
+			handler.ServeHTTP(lrw, r)
 
-		next(lrw, r)
+			requestDuration := time.Since(requestStartTime)
 
-		requestDuration := time.Since(requestStartTime)
-
-		logger.LogAttrs(r.Context(), slog.LevelInfo, "sending response",
-			slog.Int("status_code", lrw.statusCode),
-			slog.Int64("duration_ms", requestDuration.Milliseconds()),
-		)
+			logger.LogAttrs(r.Context(), slog.LevelInfo, "sending response",
+				slog.Int("status_code", lrw.statusCode),
+				slog.Int64("duration_ms", requestDuration.Milliseconds()),
+			)
+		})
 	}
 }
 
-func main() {
-	ctx := context.Background()
+func run(ctx context.Context, stdout, stderr io.Writer) error {
+	ctx, cancel := signal.NotifyContext(ctx, os.Interrupt)
+	defer cancel()
 
-	loggerHandler := slog.NewJSONHandler(os.Stdout, nil)
+	loggerHandler := slog.NewJSONHandler(stdout, nil)
 	logger := slog.New(loggerHandler)
 
-	router := http.NewServeMux()
-	router.HandleFunc("GET /", requestLoggerMiddleware(logger, homePage))
+	lc := &loggerCreator{baseLogger: logger}
 
-	address := "127.0.0.1:8080"
-	server := http.Server{
+	router := http.NewServeMux()
+	router.Handle("GET /", requestLoggerMiddleware(logger)(homePage(lc)))
+
+	address := net.JoinHostPort("127.0.0.1", "8080")
+	httpServer := http.Server{
 		Addr:     address,
 		Handler:  router,
 		ErrorLog: slog.NewLogLogger(loggerHandler, slog.LevelError),
 	}
 
-	logger.LogAttrs(ctx, slog.LevelInfo, "server started", slog.String("address", address))
+	go func() {
+		logger.LogAttrs(ctx, slog.LevelInfo, "server started", slog.String("address", address))
 
-	err := server.ListenAndServe()
+		if err := httpServer.ListenAndServe(); err != nil && err != http.ErrServerClosed {
+			fmt.Fprintf(os.Stderr, "error listening and serving: %s\n", err)
+		}
+	}()
 
-	logger.LogAttrs(ctx, slog.LevelError, "server stopped", slog.Any("error", err))
+	var wg sync.WaitGroup
+	wg.Add(1)
+
+	go func() {
+		defer wg.Done()
+		<-ctx.Done()
+		shutdownCtx := context.Background()
+		shutdownCtx, cancel := context.WithTimeout(shutdownCtx, 10*time.Second)
+		defer cancel()
+		if err := httpServer.Shutdown(shutdownCtx); err != nil {
+			fmt.Fprintf(stderr, "error shutting down http server: %s\n", err)
+		}
+	}()
+	wg.Wait()
+
+	return nil
+}
+
+func main() {
+	ctx := context.Background()
+
+	if err := run(ctx, os.Stdout, os.Stderr); err != nil {
+		fmt.Fprintf(os.Stderr, "%s\n", err)
+		os.Exit(1)
+	}
 }
