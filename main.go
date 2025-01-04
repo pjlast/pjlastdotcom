@@ -24,14 +24,6 @@ func (lc *loggerCreator) RequestLoggerFromContext(ctx context.Context) *slog.Log
 	return lc.baseLogger.With(slog.String("request_id", requestID))
 }
 
-func homePage(lc *loggerCreator) http.HandlerFunc {
-	return func(w http.ResponseWriter, r *http.Request) {
-		logger := lc.RequestLoggerFromContext(r.Context())
-		logger.LogAttrs(r.Context(), slog.LevelInfo, "testing", slog.Any("method", r.Method))
-		w.WriteHeader(202)
-	}
-}
-
 type loggingResponseWriter struct {
 	http.ResponseWriter
 	statusCode int
@@ -53,6 +45,17 @@ func generateRequestID() (string, error) {
 	return requestID.String(), nil
 }
 
+// homeHandler handles both the home page as well as any
+// requests that don't exist.
+func homeHandler(w http.ResponseWriter, r *http.Request) {
+	if r.URL.Path != "/" || r.Method != http.MethodGet {
+		http.NotFoundHandler().ServeHTTP(w, r)
+		return
+	}
+
+	home().Render(r.Context(), w)
+}
+
 func requestLoggerMiddleware(logger *slog.Logger) func(http.Handler) http.Handler {
 	return func(handler http.Handler) http.Handler {
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
@@ -70,7 +73,7 @@ func requestLoggerMiddleware(logger *slog.Logger) func(http.Handler) http.Handle
 			r = r.WithContext(ctxWithReqID)
 
 			logger := logger.With(
-				slog.String("requestId", requestID),
+				slog.String("request_id", requestID),
 			)
 
 			logger.LogAttrs(r.Context(), slog.LevelInfo, "incoming request",
@@ -84,6 +87,10 @@ func requestLoggerMiddleware(logger *slog.Logger) func(http.Handler) http.Handle
 			requestStartTime := time.Now()
 
 			handler.ServeHTTP(lrw, r)
+
+			if lrw.statusCode == 0 {
+				lrw.statusCode = http.StatusOK
+			}
 
 			requestDuration := time.Since(requestStartTime)
 
@@ -102,15 +109,14 @@ func run(ctx context.Context, stdout, stderr io.Writer) error {
 	loggerHandler := slog.NewJSONHandler(stdout, nil)
 	logger := slog.New(loggerHandler)
 
-	lc := &loggerCreator{baseLogger: logger}
-
 	router := http.NewServeMux()
-	router.Handle("GET /", requestLoggerMiddleware(logger)(homePage(lc)))
+	router.Handle("GET /css/", http.StripPrefix("/css/", http.FileServer(http.Dir("css"))))
+	router.HandleFunc("/", homeHandler)
 
 	address := net.JoinHostPort("127.0.0.1", "8080")
 	httpServer := http.Server{
 		Addr:     address,
-		Handler:  router,
+		Handler:  requestLoggerMiddleware(logger)(router),
 		ErrorLog: slog.NewLogLogger(loggerHandler, slog.LevelError),
 	}
 
