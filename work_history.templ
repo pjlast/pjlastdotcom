@@ -1,0 +1,120 @@
+package main
+
+templ workHistory() {
+	@layout("pjlast - Work history", emptyComponent()) {
+		<nav>
+			<h2>Petri-Johan Last</h2>
+			<ul role="list">
+				<li><a href="/">About</a></li>
+				<li><a href="/writing">Writing</a></li>
+				<li><a href="/work-history" aria-current="page">Work history</a></li>
+			</ul>
+		</nav>
+		<main>
+			<h1>Work history</h1>
+			<p>I've been working as some or other flavour of "software engineer".</p>
+			<ul class="work-history" role="list">
+				<li>
+					<article>
+						<img src="../images/sourcegraph.svg"/>
+						<div>
+							<header>
+								<h1><a href="https://sourcegraph.com">Sourcegraph</a></h1>
+								<h2>Senior Software Engineer</h2>
+								<p>
+									<time datetime="2022-01">January 2022</time> -
+									<time datetime="2024">Now</time>
+								</p>
+							</header>
+							<p>
+								Responsible for all external integrations to Sourcegraph's Code
+								AI Platform.
+							</p>
+							<ul>
+								<li>
+									Working on Sourcegraph's multi-tenant offering, building API
+									integrations, GraphQL resolvers, and admin interfaces in Go
+									and TypeScript/React so users can securely connect their
+									repositories to Sourcegraph.
+								</li>
+								<li>
+									Building code host and OAuth integrations with popular
+									providers such as GitHub, GitLab, Bitbucket, etc. as well as
+									proprietary ones like Perforce.
+								</li>
+								<li>
+									Optimizing operations on Sourcegraph's backend services to
+									improve permission lookups, gitserver functionality, and API
+									integrations.
+								</li>
+								<li>
+									Spearheaded experiments with LLM integrations into text
+									editors for Sourcegraph's coding assistant Cody.
+								</li>
+							</ul>
+						</div>
+					</article>
+				</li>
+				<li>
+					<article>
+						<img src="../images/takealot.svg"/>
+						<div>
+							<header>
+								<h1><a href="https://www.takealot.com">takealot.com</a></h1>
+								<h2>Machine Learning Engineer</h2>
+								<p>
+									<time datetime="2020-01">January 2020</time> -
+									<time datetime="2022-01">January 2022</time>
+								</p>
+							</header>
+							<p>
+								Developed, trained, and deployed machine learning models in
+								Python for South Africa’s largest online retailer.
+							</p>
+							<ul>
+								<li>
+									Built an automated review moderation system that reduced the
+									number of manual reviews a person had to do by over 90% (25000
+									reviews a month). Data was pulled from Google BigQuery,
+									training pipelines set up on GCP with Kubeflow pipelines, and
+									finally deployed on Kubernetes.
+								</li>
+								<li>
+									Developed a similar product search tool for duplicate product
+									detection by using natural language and image feature
+									embeddings, which is then retrieved using a vector database.
+								</li>
+								<li>
+									Built and maintained model monitoring systems to ensure
+									continued performance of our models through Slack
+									integrations, Prometheus, and Grafana.
+								</li>
+							</ul>
+						</div>
+					</article>
+				</li>
+				<li>
+					<article>
+						<img src="../images/custos-small.webp"/>
+						<div>
+							<header>
+								<h1>
+									<a href="https://www.custostech.com">Custos Media Technologies</a>
+								</h1>
+								<h2>Software Engineer</h2>
+								<p>
+									<time datetime="2017-08">August 2017</time> -
+									<time datetime="2019-12">December 2019</time>
+								</p>
+							</header>
+							<p>
+								Full-stack development for a blockchain-based media protection
+								startup using Python, GCP’s NoSQL Datastore, and GCP AppEngine.
+							</p>
+						</div>
+					</article>
+				</li>
+			</ul>
+		</main>
+	}
+}

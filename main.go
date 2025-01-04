@@ -12,6 +12,7 @@ import (
 	"sync"
 	"time"
 
+	"github.com/a-h/templ"
 	"github.com/google/uuid"
 )
 
@@ -45,9 +46,9 @@ func generateRequestID() (string, error) {
 	return requestID.String(), nil
 }
 
-// homeHandler handles both the home page as well as any
+// homeAndNotFoundHandler handles both the home page as well as any
 // requests that don't exist.
-func homeHandler(w http.ResponseWriter, r *http.Request) {
+func homeAndNotFoundHandler(w http.ResponseWriter, r *http.Request) {
 	if r.URL.Path != "/" || r.Method != http.MethodGet {
 		http.NotFoundHandler().ServeHTTP(w, r)
 		return
@@ -111,7 +112,13 @@ func run(ctx context.Context, stdout, stderr io.Writer) error {
 
 	router := http.NewServeMux()
 	router.Handle("GET /css/", http.StripPrefix("/css/", http.FileServer(http.Dir("css"))))
-	router.HandleFunc("/", homeHandler)
+	router.Handle("GET /images/", http.StripPrefix("/images/", http.FileServer(http.Dir("images"))))
+	router.Handle("GET /js/", http.StripPrefix("/js/", http.FileServer(http.Dir("js"))))
+	router.Handle("GET /writing", templ.Handler(writing()))
+	router.Handle("GET /writing/hidden-simplicity", templ.Handler(hiddenSimplicity()))
+	router.Handle("GET /writing/afrikaans-yugioh-1", templ.Handler(afrikaansYugioh1()))
+	router.Handle("GET /work-history", templ.Handler(workHistory()))
+	router.HandleFunc("/", homeAndNotFoundHandler)
 
 	address := net.JoinHostPort("127.0.0.1", "8080")
 	httpServer := http.Server{

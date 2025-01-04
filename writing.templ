@@ -1,0 +1,39 @@
+package main
+
+templ writing() {
+	@layout("pjlast - Writing", emptyComponent()) {
+    <nav>
+      <h2>Petri-Johan Last</h2>
+      <ul role="list">
+        <li><a href="/">About</a></li>
+        <li><a href="/writing" aria-current="page">Writing</a></li>
+        <li><a href="/work-history">Work history</a></li>
+      </ul>
+    </nav>
+
+    <main>
+      <h1>Writing</h1>
+
+      <ul class="writing" role="list">
+        <li lang="af">
+          <article>
+            <header>
+              <h1><a href="/writing/afrikaans-yugioh-1">Yu-Gi-Oh! in Afrikaans, deel 1</a></h1>
+              <p><time datetime="2024-12-03">03 Desember 2024</time></p>
+            </header>
+            <p>Kinders wat kinderspeletjies speel? Verregaande!</p>
+          </article>
+        </li>
+        <li>
+          <article>
+            <header>
+              <h1><a href="/writing/hidden-simplicity">Hidden simplicity</a></h1>
+              <p><time datetime="2024-11-25">25 November 2024</time></p>
+            </header>
+            <p>Complex code that does nothing.</p>
+          </article>
+        </li>
+      </ul>
+    </main>
+	}
+}

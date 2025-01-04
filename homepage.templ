@@ -1,6 +1,8 @@
 package main
 
-templ layout(title string) {
+templ emptyComponent() {}
+
+templ layout(title string, imports templ.Component) {
 	<!DOCTYPE html>
 	<html lang="en">
 		<head>
@@ -15,7 +17,8 @@ templ layout(title string) {
 			<meta property="og:description" content="Petri's personal website."/>
 			<meta property="og:locale" content="en_ZA"/>
 			<title>{ title }</title>
-			<link rel="stylesheet" href="css/style.css" type="text/css"/>
+			<link rel="stylesheet" href="/css/style.css" type="text/css"/>
+			@imports
 		</head>
 		<body>
 			{ children... }
@@ -24,13 +27,13 @@ templ layout(title string) {
 }
 
 templ home() {
-	@layout("pjlast") {
+	@layout("pjlast", emptyComponent()) {
 		<nav>
 			<h2>Petri-Johan Last</h2>
 			<ul role="list">
-				<li><a href="index.html" aria-current="page">About</a></li>
-				<li><a href="writing/index.html">Writing</a></li>
-				<li><a href="work-history/index.html">Work history</a></li>
+				<li><a href="/" aria-current="page">About</a></li>
+				<li><a href="/writing">Writing</a></li>
+				<li><a href="/work-history">Work history</a></li>
 			</ul>
 		</nav>
 		<main>
