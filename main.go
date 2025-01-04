@@ -120,7 +120,7 @@ func run(ctx context.Context, stdout, stderr io.Writer) error {
 	router.Handle("GET /work-history", templ.Handler(workHistory()))
 	router.HandleFunc("/", homeAndNotFoundHandler)
 
-	address := net.JoinHostPort("127.0.0.1", "8080")
+	address := net.JoinHostPort("0.0.0.0", "8080")
 	httpServer := http.Server{
 		Addr:     address,
 		Handler:  requestLoggerMiddleware(logger)(router),
