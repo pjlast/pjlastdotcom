@@ -7,12 +7,17 @@ COPY . /app
 RUN CGO_ENABLED=0 GOOS=linux go build -o /entrypoint
 
 # Deploy.
-FROM gcr.io/distroless/static-debian11 AS release-stage
+FROM debian:latest AS release-stage
+
+RUN apt-get update && apt-get install -y --no-install-recommends openssh-client
+
 WORKDIR /
-COPY --chown=nonroot --from=build-stage /entrypoint /entrypoint
-COPY --chown=nonroot --from=build-stage /app/css /css
-COPY --chown=nonroot --from=build-stage /app/js /js
-COPY --chown=nonroot --from=build-stage /app/images /images
-EXPOSE 8080
-USER nonroot:nonroot
+COPY --from=build-stage /entrypoint /entrypoint
+COPY --from=build-stage /app/css /css
+COPY --from=build-stage /app/js /js
+COPY --from=build-stage /app/images /images
+COPY --from=build-stage /app/.ssh /.ssh
+# EXPOSE 8080
+EXPOSE 23423
+# USER nonroot:nonroot
 ENTRYPOINT ["/entrypoint"]
