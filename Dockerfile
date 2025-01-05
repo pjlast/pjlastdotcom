@@ -16,8 +16,8 @@ COPY --from=build-stage /entrypoint /entrypoint
 COPY --from=build-stage /app/css /css
 COPY --from=build-stage /app/js /js
 COPY --from=build-stage /app/images /images
-COPY --from=build-stage /app/.ssh /.ssh
-# EXPOSE 8080
+
+EXPOSE 8080
 EXPOSE 23423
-# USER nonroot:nonroot
+
 ENTRYPOINT ["/entrypoint"]
