@@ -22,12 +22,10 @@ kill_timeout = '5s'
   auto_stop_machines = 'stop'
   auto_start_machines = true
   min_machines_running = 0
-  processes = ['app']
 
 [[services]]
   http_checks = []
   internal_port = 23423
-  processes = ["app"]
   protocol = "tcp"
   script_checks = []
 
@@ -38,7 +36,6 @@ kill_timeout = '5s'
 [[services]]
   protocol = 'tcp'
   internal_port = 8080
-  processes = ['app']
 
   [[services.ports]]
     port = 80
